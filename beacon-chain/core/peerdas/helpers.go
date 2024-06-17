@@ -302,9 +302,9 @@ func VerifyDataColumnSidecarKZGProofs(sc *ethpb.DataColumnSidecar) (bool, error)
 	return cKzg4844.VerifyCellKZGProofBatch(ckzgComms, rowIdx, colIdx, cells, proofs)
 }
 
-// hypergeomCDF computes the hypergeometric cumulative distribution function.
+// HypergeomCDF computes the hypergeometric cumulative distribution function.
 // https://en.wikipedia.org/wiki/Hypergeometric_distribution
-func hypergeomCDF(k, M, n, N uint64) float64 {
+func HypergeomCDF(k, M, n, N uint64) float64 {
 	denominatorInt := new(big.Int).Binomial(int64(M), int64(N)) // lint:ignore uintcast
 	denominator := new(big.Float).SetInt(denominatorInt)
 
@@ -337,13 +337,13 @@ func ExtendedSampleCount(samplesPerSlot, allowedFailures uint64) uint64 {
 	worstCaseMissing := columnsCount/2 + 1
 
 	// Compute the false positive threshold.
-	falsePositiveThreshold := hypergeomCDF(0, columnsCount, worstCaseMissing, samplesPerSlot)
+	falsePositiveThreshold := HypergeomCDF(0, columnsCount, worstCaseMissing, samplesPerSlot)
 
 	var sampleCount uint64
 
 	// Finally, compute the extended sample count.
 	for sampleCount = samplesPerSlot; sampleCount < columnsCount+1; sampleCount++ {
-		if hypergeomCDF(allowedFailures, columnsCount, worstCaseMissing, sampleCount) <= falsePositiveThreshold {
+		if HypergeomCDF(allowedFailures, columnsCount, worstCaseMissing, sampleCount) <= falsePositiveThreshold {
 			break
 		}
 	}
