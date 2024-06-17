@@ -12,6 +12,9 @@ import (
 
 // GetValidCustodyPeers returns a list of peers that custody a super set of the local node's custody columns.
 func (s *Service) GetValidCustodyPeers(peers []peer.ID) ([]peer.ID, error) {
+	// Get the total number of columns.
+	numberOfColumns := params.BeaconConfig().NumberOfColumns
+
 	// Get the custody subnets count of the local node.
 	localCustodySubnetCount := params.BeaconConfig().CustodyRequirement
 	if flags.Get().SubscribeToAllSubnets {
@@ -24,7 +27,10 @@ func (s *Service) GetValidCustodyPeers(peers []peer.ID) ([]peer.ID, error) {
 		return nil, errors.Wrap(err, "custody columns")
 	}
 
-	var validPeers []peer.ID
+	localCustotyColumnsCount := uint64(len(localCustodyColumns))
+
+	// Find the valid peers.
+	validPeers := make([]peer.ID, 0, len(peers))
 
 loop:
 	for _, pid := range peers {
@@ -41,6 +47,20 @@ loop:
 		remoteCustodyColumns, err := peerdas.CustodyColumns(remoteNodeID, remoteCustodySubnetCount)
 		if err != nil {
 			return nil, errors.Wrap(err, "custody columns")
+		}
+
+		remoteCustodyColumnsCount := uint64(len(remoteCustodyColumns))
+
+		// If the remote peer custodies less columns than the local node, skip it.
+		if remoteCustodyColumnsCount < localCustotyColumnsCount {
+			continue
+		}
+
+		// If the remote peers custodies all the possible columns, add it to the list.
+		if remoteCustodyColumnsCount == numberOfColumns {
+			copiedId := pid
+			validPeers = append(validPeers, copiedId)
+			continue
 		}
 
 		// Filter out invalid peers.
