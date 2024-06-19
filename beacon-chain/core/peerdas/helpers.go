@@ -7,6 +7,7 @@ import (
 
 	cKzg4844 "github.com/ethereum/c-kzg-4844/bindings/go"
 	"github.com/ethereum/go-ethereum/p2p/enode"
+	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/holiman/uint256"
 	errors "github.com/pkg/errors"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
@@ -18,13 +19,24 @@ import (
 )
 
 // Bytes per cell
-const bytesPerCell = cKzg4844.FieldElementsPerCell * cKzg4844.BytesPerFieldElement
+const (
+	CustodySubnetCountEnrKey = "csc"
+
+	bytesPerCell = cKzg4844.FieldElementsPerCell * cKzg4844.BytesPerFieldElement
+)
+
+// https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7594/p2p-interface.md#the-discovery-domain-discv5
+type CustodySubnetCount uint64
+
+func (CustodySubnetCount) ENRKey() string { return CustodySubnetCountEnrKey }
 
 var (
 	// Custom errors
-	errCustodySubnetCountTooLarge = errors.New("custody subnet count larger than data column sidecar subnet count")
-	errIndexTooLarge              = errors.New("column index is larger than the specified columns count")
-	errMismatchLength             = errors.New("mismatch in the length of the commitments and proofs")
+	errCustodySubnetCountTooLarge   = errors.New("custody subnet count larger than data column sidecar subnet count")
+	errIndexTooLarge                = errors.New("column index is larger than the specified columns count")
+	errMismatchLength               = errors.New("mismatch in the length of the commitments and proofs")
+	errRecordNil                    = errors.New("record is nil")
+	errCannotLoadCustodySubnetCount = errors.New("cannot load the custody subnet count from peer")
 
 	// maxUint256 is the maximum value of a uint256.
 	maxUint256 = &uint256.Int{math.MaxUint64, math.MaxUint64, math.MaxUint64, math.MaxUint64}
@@ -349,4 +361,19 @@ func ExtendedSampleCount(samplesPerSlot, allowedFailures uint64) uint64 {
 	}
 
 	return sampleCount
+}
+
+func CustodyCountFromRecord(record *enr.Record) (uint64, error) {
+	// By default, we assume the peer custodies the minimum number of subnets.
+	if record == nil {
+		return 0, errRecordNil
+	}
+
+	// Load the `custody_subnet_count`
+	var csc CustodySubnetCount
+	if err := record.Load(&csc); err != nil {
+		return 0, errCannotLoadCustodySubnetCount
+	}
+
+	return uint64(csc), nil
 }

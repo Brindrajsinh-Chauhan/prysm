@@ -17,6 +17,7 @@ import (
 	"github.com/prysmaticlabs/go-bitfield"
 
 	"github.com/prysmaticlabs/prysm/v5/beacon-chain/cache"
+	"github.com/prysmaticlabs/prysm/v5/beacon-chain/core/peerdas"
 	"github.com/prysmaticlabs/prysm/v5/cmd/beacon-chain/flags"
 	"github.com/prysmaticlabs/prysm/v5/config/features"
 	"github.com/prysmaticlabs/prysm/v5/config/params"
@@ -43,21 +44,12 @@ const (
 	udp6
 )
 
-const (
-	quickProtocolEnrKey      = "quic"
-	custodySubnetCountEnrKey = "csc"
-)
+const quickProtocolEnrKey = "quic"
 
-type (
-	quicProtocol       uint16
-	CustodySubnetCount uint64
-)
+type quicProtocol uint16
 
 // quicProtocol is the "quic" key, which holds the QUIC port of the node.
 func (quicProtocol) ENRKey() string { return quickProtocolEnrKey }
-
-// https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7594/p2p-interface.md#the-discovery-domain-discv5
-func (CustodySubnetCount) ENRKey() string { return custodySubnetCountEnrKey }
 
 // RefreshPersistentSubnets checks that we are tracking our local persistent subnets for a variety of gossip topics.
 // This routine checks for our attestation, sync committee and data column subnets and updates them if they have
@@ -275,9 +267,9 @@ func (s *Service) createLocalNode(
 	}
 
 	if features.Get().EnablePeerDAS {
-		custodySubnetEntry := CustodySubnetCount(params.BeaconConfig().CustodyRequirement)
+		custodySubnetEntry := peerdas.CustodySubnetCount(params.BeaconConfig().CustodyRequirement)
 		if flags.Get().SubscribeToAllSubnets {
-			custodySubnetEntry = CustodySubnetCount(params.BeaconConfig().DataColumnSidecarSubnetCount)
+			custodySubnetEntry = peerdas.CustodySubnetCount(params.BeaconConfig().DataColumnSidecarSubnetCount)
 		}
 		localNode.Set(custodySubnetEntry)
 	}
